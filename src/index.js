@@ -92,7 +92,7 @@ export class FuseBoxLoader extends Loader {
             return this._import(id)
                 .then(result => {
                     this.moduleRegistry[id] = result;
-                    return ensureOriginOnExports(m, id);
+                    return ensureOriginOnExports(result, id);
                 });
         }
 
