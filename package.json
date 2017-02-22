@@ -1,0 +1,33 @@
+{
+  "name": "aurelia-loader-fusebox",
+  "version": "1.0.0",
+  "description": "An implementation of the loader interface compatible with FuseBox",
+  "main": "dist/aurelia-loader-fusebox.js",
+  "scripts": {
+    "build": "babel src --out-file dist/aurelia-loader-fusebox.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arabsight/aurelia-loader-fusebox.git"
+  },
+  "keywords": [
+    "aurelia",
+    "loader",
+    "fuse-box"
+  ],
+  "author": "Rabah Ghodbane <r-ghodbane@live.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/arabsight/aurelia-loader-fusebox/issues"
+  },
+  "homepage": "https://github.com/arabsight/aurelia-loader-fusebox#readme",
+  "dependencies": {
+    "aurelia-loader": "^1.0.0",
+    "aurelia-metadata": "^1.0.3",
+    "aurelia-pal": "^1.3.0"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.23.0",
+    "babel-preset-latest": "^6.22.0"
+  }
+}
