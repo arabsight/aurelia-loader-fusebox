@@ -1,7 +1,7 @@
 {
     "name": "aurelia-loader-fusebox",
     "version": "1.0.0",
-    "description": "An implementation of the loader interface compatible with FuseBox",
+    "description": "An implementation aurelia's loader interface compatible with FuseBox",
     "main": "dist/aurelia-loader-fusebox.js",
     "scripts": {
         "build": "babel src --out-file dist/aurelia-loader-fusebox.js"
