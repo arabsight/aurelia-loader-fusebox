@@ -28,7 +28,16 @@ function ensureOriginOnExports(executed, name) {
     return executed;
 }
 
+/**
+ * An implementation of the TemplateLoader interface implemented with text-based loading.
+ */
 export class TextTemplateLoader {
+    /**
+     * Loads a template.
+     * @param loader The loader that is requesting the template load.
+     * @param entry The TemplateRegistryEntry to load and populate with a template.
+     * @return A promise which resolves when the TemplateRegistryEntry is loaded with a template.
+     */
     loadTemplate(loader, entry) {
         return loader.loadText(entry.address)
             .then(text => {
@@ -37,8 +46,14 @@ export class TextTemplateLoader {
     }
 }
 
+/**
+ * An implementation of the Loader abstraction which works with FuseBox.
+ */
 export class FuseBoxLoader extends Loader {
 
+    /**
+     * Creates an instance of the FuseBoxLoader.
+     */
     constructor() {
         super();
 
@@ -49,6 +64,10 @@ export class FuseBoxLoader extends Loader {
         this.useTemplateRegistryEntryPlugin();
     }
 
+    /**
+     * Instructs the loader to use a specific TemplateLoader instance for loading templates
+     * @param templateLoader The instance of TemplateLoader to use for loading templates.
+     */
     useTemplateLoader(templateLoader) {
         this.templateLoader = templateLoader;
     }
@@ -59,6 +78,9 @@ export class FuseBoxLoader extends Loader {
         return this.templateLoader.loadTemplate(this, entry).then(x => entry);
     };
 
+    /**
+     * Instructs the loader to use a specific plugin for loading templates
+     */
     useTemplateRegistryEntryPlugin() {
         let self = this;
         this.addPlugin(TEMPLATE_PLUGIN_NAME, {
@@ -66,10 +88,34 @@ export class FuseBoxLoader extends Loader {
         });
     }
 
+    /**
+     * Maps a module id to a source.
+     * @param id The module id.
+     * @param source The source to map the module to.
+     */
     map(id, source) {}
+
+    /**
+     * Normalizes a module id.
+     * @param moduleId The module id to normalize.
+     * @param relativeTo What the module id should be normalized relative to.
+     * @return The normalized module id.
+     */
     normalizeSync(moduleId, relativeTo) { return moduleId; }
+
+    /**
+     * Normalizes a module id.
+     * @param moduleId The module id to normalize.
+     * @param relativeTo What the module id should be normalized relative to.
+     * @return A promise for the normalized module id.
+     */
     normalize(moduleId, relativeTo) { return Promise.resolve(moduleId); }
 
+    /**
+     * Loads a module with FuseBox and cache it.
+     * @param id The module id to load.
+     * @return A promise for the loaded module.
+     */
     _loadAndRegister(id) {
         return new Promise((resolve, reject) => {
             try {
@@ -82,12 +128,20 @@ export class FuseBoxLoader extends Loader {
         });
     }
 
+    /**
+     * Loads a module.
+     * @param id The module ID to load.
+     * @return A Promise for the loaded module.
+     */
     loadModule(id) {
+        // if its cached return it from the cache
         let existing = this.moduleRegistry[id];
         if (existing) return Promise.resolve(existing);
 
+        // if its registred in FuseBox packages, load it directly
         if (FuseBox.exists(id)) return this._loadAndRegister(id);
 
+        // non-js modules, use plugin to fetch it
         if (id.indexOf('!') > -1) {
             return this._import(id)
                 .then(result => {
@@ -96,10 +150,16 @@ export class FuseBoxLoader extends Loader {
                 });
         }
 
+        // developer's code is registred with FuseBox under opt.package || 'default'
         if (FuseBox.exists(`${PKG_NAME}/${id}`)) {
             return this._loadAndRegister(`${PKG_NAME}/${id}`);
         }
 
+        // some aurelia packages have sub-resources
+        // like router-resources and templating-resources
+        // those are requested like this: resource/subresource
+        // we need to map that to FuseBox's entry under:
+        // FuseBox.packages[moduleId].f/path-to-subresource
         let moduleId = Object.keys(FuseBox.packages)
             .find(name => id.startsWith(`${name}/`));
 
@@ -113,16 +173,31 @@ export class FuseBoxLoader extends Loader {
         throw new Error(`Unable to load module with ID: ${id}`);
     }
 
+    /**
+     * Loads a collection of modules.
+     * @param ids The set of module ids to load.
+     * @return A Promise for an array of loaded modules.
+     */
     loadAllModules(ids) {
         return Promise.all(
             ids.map(id => this.loadModule(id))
         );
     }
 
+    /**
+     * Loads a template.
+     * @param url The url of the template to load.
+     * @return A Promise for a TemplateRegistryEntry containing the template.
+     */
     loadTemplate(url) {
         return this._import(this.applyPluginToUrl(url, TEMPLATE_PLUGIN_NAME));
     }
 
+    /**
+     * Fetchs a resource using a plugin.
+     * @param address The plugin-based module id.
+     * @return A Promise for fetched content.
+     */
     _import(address) {
         const [pluginName, id] = address.split('!');
         const plugin = this.loaderPlugins[pluginName];
@@ -130,15 +205,31 @@ export class FuseBoxLoader extends Loader {
         return Promise.resolve(plugin.fetch(id));
     }
 
+    /**
+     * Loads a text-based resource.
+     * @param url The url of the text file to load.
+     * @return A Promise for text content.
+     */
     loadText(url) {
         return Promise.resolve(FuseBox.import(url))
             .then(m => (typeof m === 'string') ? m : m.default);
     }
 
+    /**
+     * Alters a module id so that it includes a plugin loader.
+     * @param url The url of the module to load.
+     * @param pluginName The plugin to apply to the module id.
+     * @return The plugin-based module id.
+     */
     applyPluginToUrl(url, pluginName) {
         return `${pluginName}!${url}`;
     }
 
+    /**
+     * Registers a plugin with the loader.
+     * @param pluginName The name of the plugin.
+     * @param implementation The plugin implementation.
+     */
     addPlugin(pluginName, implementation) {
         if (this.loaderPlugins[pluginName]) return;
         this.loaderPlugins[pluginName] = implementation;
