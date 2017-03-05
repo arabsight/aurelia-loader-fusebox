@@ -4,7 +4,7 @@ import { Loader } from 'aurelia-loader';
 import { Origin } from 'aurelia-metadata';
 
 const TEMPLATE_PLUGIN_NAME = 'template-registry-entry';
-const PKG_NAME = FuseBox.defaultPackageName || 'default';
+const PACKAGE_NAME = FuseBox.defaultPackageName || 'default';
 
 function ensureOriginOnExports(executed, name) {
     let target = executed;
@@ -59,6 +59,7 @@ export class FuseBoxLoader extends Loader {
 
         this.loaderPlugins = Object.create(null);
         this.moduleRegistry = Object.create(null);
+        this.normalizedIds = Object.create(null);
 
         this.useTemplateLoader(new TextTemplateLoader());
         this.useTemplateRegistryEntryPlugin();
@@ -116,15 +117,83 @@ export class FuseBoxLoader extends Loader {
      * @param id The module id to load.
      * @return A promise for the loaded module.
      */
-    _loadAndRegister(id) {
+    _loadAndCache(id) {
         return new Promise((resolve, reject) => {
             try {
-                let m = FuseBox.import(id);
-                this.moduleRegistry[id] = m;
-                resolve(ensureOriginOnExports(m, id));
+                let moduleId = this._normalizeId(id);
+                let _module = FuseBox.import(moduleId);
+                this.moduleRegistry[id] = _module;
+
+                resolve(ensureOriginOnExports(_module, id));
             } catch (error) {
                 reject(error);
             }
+        });
+    }
+
+    /**
+     * Find the module ID for sub-resources
+     * @param id the requested module id
+     * @param parentId the module id of the package containing sub-resources
+     * @returns the module id for the sub-resource
+     */
+    _getResourceId(id, parentId) {
+        const resources = Object.keys(FuseBox.packages[parentId].f);
+        const resourceName = id.replace(`${parentId}/`, '');
+        let entry = resources.find(r => r.endsWith(resourceName + '.js'));
+        entry = entry.replace(/\.js$/i, '');
+        return `${parentId}/${entry}`;
+    }
+
+    /**
+     * Maps a requested module id to a format that FuseBox Understands
+     * @param id the requested module id
+     * @returns the normalized id
+     */
+    _normalizeId(id) {
+        let existing = this.normalizedIds[id];
+        if (existing) return existing;
+
+        if (FuseBox.exists(id)) {
+            this.normalizedIds[id] = id;
+            return id;
+        }
+
+        let fuseId = `${PACKAGE_NAME}/${id}`;
+        if (FuseBox.exists(fuseId)) {
+            this.normalizedIds[id] = fuseId;
+            return fuseId;
+        }
+
+        let parentId = Object.keys(FuseBox.packages)
+            .find(name => id.startsWith(`${name}/`));
+        if (parentId) {
+            let resourceId = this._getResourceId(id, parentId);
+            if (FuseBox.exists(resourceId)) {
+                this.normalizedIds[id] = resourceId;
+                return resourceId;
+            }
+        }
+
+        throw new Error(`Unable to find a module with ID: ${id}`);
+    }
+
+    /**
+     * Fetchs a resource using a plugin.
+     * @param address The plugin-based module id.
+     * @param cache whether to cache the fetched content
+     * @return A Promise for fetched content.
+     */
+    _loadWithPlugin(address, cache) {
+        return new Promise((resolve, reject) => {
+            const [pluginName, id] = address.split('!');
+            const plugin = this.loaderPlugins[pluginName];
+            let result = plugin.fetch(id);
+
+            if (!cache) return resolve(result);
+
+            this.moduleRegistry[address] = result;
+            resolve(ensureOriginOnExports(result, id));
         });
     }
 
@@ -134,43 +203,16 @@ export class FuseBoxLoader extends Loader {
      * @return A Promise for the loaded module.
      */
     loadModule(id) {
-        // if its cached return it from the cache
         let existing = this.moduleRegistry[id];
-        if (existing) return Promise.resolve(existing);
+        if (existing) {
+            return Promise.resolve(existing);
+        }
 
-        // if its registred in FuseBox packages, load it directly
-        if (FuseBox.exists(id)) return this._loadAndRegister(id);
-
-        // non-js modules, use plugin to fetch it
         if (id.indexOf('!') > -1) {
-            return this._import(id)
-                .then(result => {
-                    this.moduleRegistry[id] = result;
-                    return ensureOriginOnExports(result, id);
-                });
+            return this._loadWithPlugin(id, true);
         }
 
-        // developer's code is registred with FuseBox under opt.package || 'default'
-        if (FuseBox.exists(`${PKG_NAME}/${id}`)) {
-            return this._loadAndRegister(`${PKG_NAME}/${id}`);
-        }
-
-        // some aurelia packages have sub-resources
-        // like router-resources and templating-resources
-        // those are requested like this: resource/subresource
-        // we need to map that to FuseBox's entry under:
-        // FuseBox.packages[moduleId].f/path-to-subresource
-        let moduleId = Object.keys(FuseBox.packages)
-            .find(name => id.startsWith(`${name}/`));
-
-        if (moduleId) {
-            let resources = Object.keys(FuseBox.packages[moduleId].f);
-            let resourceName = id.replace(`${moduleId}/`, '');
-            let resourceEntry = resources.find(r => r.endsWith(resourceName + '.js'));
-            return this._loadAndRegister(`${moduleId}/${resourceEntry}`);
-        }
-
-        throw new Error(`Unable to load module with ID: ${id}`);
+        return this._loadAndCache(id);
     }
 
     /**
@@ -190,19 +232,7 @@ export class FuseBoxLoader extends Loader {
      * @return A Promise for a TemplateRegistryEntry containing the template.
      */
     loadTemplate(url) {
-        return this._import(this.applyPluginToUrl(url, TEMPLATE_PLUGIN_NAME));
-    }
-
-    /**
-     * Fetchs a resource using a plugin.
-     * @param address The plugin-based module id.
-     * @return A Promise for fetched content.
-     */
-    _import(address) {
-        const [pluginName, id] = address.split('!');
-        const plugin = this.loaderPlugins[pluginName];
-
-        return Promise.resolve(plugin.fetch(id));
+        return this._loadWithPlugin(this.applyPluginToUrl(url, TEMPLATE_PLUGIN_NAME));
     }
 
     /**
@@ -211,7 +241,9 @@ export class FuseBoxLoader extends Loader {
      * @return A Promise for text content.
      */
     loadText(url) {
-        return Promise.resolve(FuseBox.import(url))
+        const id = this._normalizeId(url);
+
+        return Promise.resolve(FuseBox.import(id))
             .then(m => (typeof m === 'string') ? m : m.default);
     }
 
@@ -238,6 +270,7 @@ export class FuseBoxLoader extends Loader {
 
 PLATFORM.Loader = FuseBoxLoader;
 
+// TODO implement eachModule
 /*PLATFORM.eachModule = callback => {
     const moduleIds = Object.getOwnPropertyNames(FuseBox.packages);
 

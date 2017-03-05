@@ -1,10 +1,10 @@
 {
     "name": "aurelia-loader-fusebox",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "An implementation aurelia's loader interface compatible with FuseBox",
     "main": "dist/aurelia-loader-fusebox.js",
     "scripts": {
-        "build": "babel src --out-file dist/aurelia-loader-fusebox.js"
+        "build": "babel src --out-file dist/aurelia-loader-fusebox.js --no-comments"
     },
     "repository": {
         "type": "git",
@@ -13,7 +13,8 @@
     "keywords": [
         "aurelia",
         "loader",
-        "fuse-box"
+        "fuse-box",
+        "fusebox"
     ],
     "author": "Rabah Ghodbane <r-ghodbane@live.com>",
     "license": "MIT",
@@ -28,6 +29,6 @@
     },
     "devDependencies": {
         "babel-cli": "^6.23.0",
-        "babel-preset-latest": "^6.22.0"
+        "babel-preset-env": "^1.2.0"
     }
 }
