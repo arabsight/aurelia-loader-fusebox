@@ -136,7 +136,7 @@ var FuseBoxLoader = exports.FuseBoxLoader = function (_Loader) {
         key: '_getResourceId',
         value: function _getResourceId(id, parentId) {
             var resources = Object.keys(FuseBox.packages[parentId].f);
-            var resourceName = id.replace(parentId + '/', '');
+            var resourceName = id.replace(parentId, '');
             var entry = resources.find(function (r) {
                 return r.endsWith(resourceName + '.js');
             });

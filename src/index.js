@@ -139,7 +139,7 @@ export class FuseBoxLoader extends Loader {
      */
     _getResourceId(id, parentId) {
         const resources = Object.keys(FuseBox.packages[parentId].f);
-        const resourceName = id.replace(`${parentId}/`, '');
+        const resourceName = id.replace(parentId, '');
         let entry = resources.find(r => r.endsWith(resourceName + '.js'));
         entry = entry.replace(/\.js$/i, '');
         return `${parentId}/${entry}`;
