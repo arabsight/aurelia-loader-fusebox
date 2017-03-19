@@ -140,8 +140,8 @@ var FuseBoxLoader = exports.FuseBoxLoader = function (_Loader) {
             var entry = resources.find(function (r) {
                 return r.endsWith(resourceName + '.js');
             });
-            entry = entry.replace(/\.js$/i, '');
-            return parentId + '/' + entry;
+            if (!entry) throw new Error('Unable to find a module with ID: ' + id);
+            return parentId + '/' + entry.replace(/\.js$/i, '');
         }
     }, {
         key: '_normalizeId',

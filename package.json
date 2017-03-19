@@ -1,6 +1,6 @@
 {
     "name": "aurelia-loader-fusebox",
-    "version": "1.1.1",
+    "version": "1.1.2",
     "description": "An implementation aurelia's loader interface compatible with FuseBox",
     "main": "dist/aurelia-loader-fusebox.js",
     "scripts": {
@@ -15,6 +15,9 @@
         "loader",
         "fuse-box",
         "fusebox"
+    ],
+    "files": [
+        "dist"
     ],
     "author": "Rabah Ghodbane <r-ghodbane@live.com>",
     "license": "MIT",

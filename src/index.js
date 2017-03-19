@@ -141,9 +141,16 @@ export class FuseBoxLoader extends Loader {
         const resources = Object.keys(FuseBox.packages[parentId].f);
         const resourceName = id.replace(parentId, '');
         let entry = resources.find(r => r.endsWith(resourceName + '.js'));
-        entry = entry.replace(/\.js$/i, '');
-        return `${parentId}/${entry}`;
+        if (!entry) throw new Error(`Unable to find a module with ID: ${id}`);
+        return `${parentId}/${entry.replace(/\.js$/i, '')}`;
     }
+    // function _getResourceId(id, parentId) {
+    //     const parentEntry = FuseBox.packages[parentId].s.entry;
+    //     const resourceName = id.replace(parentId, '');
+    //     const entry = parentEntry.replace(/\/([^\/]+)\/?$/, resourceName);
+    //     return `${parentId}/${entry}`;
+    // }
+
 
     /**
      * Maps a requested module id to a format that FuseBox Understands
