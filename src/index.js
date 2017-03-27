@@ -18,10 +18,12 @@ function ensureOriginOnExports(executed, name) {
     Origin.set(target, new Origin(name, 'default'));
 
     for (key in target) {
-        exportedValue = target[key];
+        if (Object.prototype.hasOwnProperty.call(target, key)) {
+            exportedValue = target[key];
 
-        if (typeof exportedValue === 'function') {
-            Origin.set(exportedValue, new Origin(name, key));
+            if (typeof exportedValue === 'function') {
+                Origin.set(exportedValue, new Origin(name, key));
+            }
         }
     }
 
@@ -36,11 +38,12 @@ export class TextTemplateLoader {
      * Loads a template.
      * @param loader The loader that is requesting the template load.
      * @param entry The TemplateRegistryEntry to load and populate with a template.
-     * @return A promise which resolves when the TemplateRegistryEntry is loaded with a template.
+     * @return A promise which resolves when the TemplateRegistryEntry is loaded
+     * with a template.
      */
     loadTemplate(loader, entry) {
         return loader.loadText(entry.address)
-            .then(text => {
+            .then((text) => {
                 entry.template = DOM.createTemplateFromMarkup(text);
             });
     }
@@ -66,7 +69,8 @@ export class FuseBoxLoader extends Loader {
     }
 
     /**
-     * Instructs the loader to use a specific TemplateLoader instance for loading templates
+     * Instructs the loader to use a specific TemplateLoader instance
+     * for loading templates
      * @param templateLoader The instance of TemplateLoader to use for loading templates.
      */
     useTemplateLoader(templateLoader) {
@@ -76,7 +80,7 @@ export class FuseBoxLoader extends Loader {
     getTemplateRegistryEntry(address) {
         const entry = this.getOrCreateTemplateRegistryEntry(address);
         if (entry.templateIsLoaded) return entry;
-        return this.templateLoader.loadTemplate(this, entry).then(x => entry);
+        return this.templateLoader.loadTemplate(this, entry).then((x) => entry);
     };
 
     /**
@@ -85,7 +89,7 @@ export class FuseBoxLoader extends Loader {
     useTemplateRegistryEntryPlugin() {
         let self = this;
         this.addPlugin(TEMPLATE_PLUGIN_NAME, {
-            'fetch': self.getTemplateRegistryEntry.bind(self)
+            'fetch': self.getTemplateRegistryEntry.bind(self),
         });
     }
 
@@ -102,7 +106,9 @@ export class FuseBoxLoader extends Loader {
      * @param relativeTo What the module id should be normalized relative to.
      * @return The normalized module id.
      */
-    normalizeSync(moduleId, relativeTo) { return moduleId; }
+    normalizeSync(moduleId, relativeTo) {
+        return moduleId;
+    }
 
     /**
      * Normalizes a module id.
@@ -110,7 +116,9 @@ export class FuseBoxLoader extends Loader {
      * @param relativeTo What the module id should be normalized relative to.
      * @return A promise for the normalized module id.
      */
-    normalize(moduleId, relativeTo) { return Promise.resolve(moduleId); }
+    normalize(moduleId, relativeTo) {
+        return Promise.resolve(moduleId);
+    }
 
     /**
      * Loads a module with FuseBox and cache it.
@@ -140,7 +148,7 @@ export class FuseBoxLoader extends Loader {
     _getResourceId(id, parentId) {
         const resources = Object.keys(FuseBox.packages[parentId].f);
         const resourceName = id.replace(parentId, '');
-        let entry = resources.find(r => r.endsWith(resourceName + '.js'));
+        let entry = resources.find((r) => r.endsWith(resourceName + '.js'));
         if (!entry) throw new Error(`Unable to find a module with ID: ${id}`);
         return `${parentId}/${entry.replace(/\.js$/i, '')}`;
     }
@@ -173,7 +181,7 @@ export class FuseBoxLoader extends Loader {
         }
 
         let parentId = Object.keys(FuseBox.packages)
-            .find(name => id.startsWith(`${name}/`));
+            .find((name) => id.startsWith(`${name}/`));
         if (parentId) {
             let resourceId = this._getResourceId(id, parentId);
             if (FuseBox.exists(resourceId)) {
@@ -229,7 +237,7 @@ export class FuseBoxLoader extends Loader {
      */
     loadAllModules(ids) {
         return Promise.all(
-            ids.map(id => this.loadModule(id))
+            ids.map((id) => this.loadModule(id))
         );
     }
 
@@ -251,7 +259,7 @@ export class FuseBoxLoader extends Loader {
         const id = this._normalizeId(url);
 
         return Promise.resolve(FuseBox.import(id))
-            .then(m => (typeof m === 'string') ? m : m.default);
+            .then((m) => (typeof m === 'string') ? m : m.default);
     }
 
     /**
@@ -278,7 +286,7 @@ export class FuseBoxLoader extends Loader {
 PLATFORM.Loader = FuseBoxLoader;
 
 // TODO implement eachModule
-/*PLATFORM.eachModule = callback => {
+/* PLATFORM.eachModule = callback => {
     const moduleIds = Object.getOwnPropertyNames(FuseBox.packages);
 
     moduleIds

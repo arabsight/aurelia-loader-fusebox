@@ -36,10 +36,12 @@ function ensureOriginOnExports(executed, name) {
     _aureliaMetadata.Origin.set(target, new _aureliaMetadata.Origin(name, 'default'));
 
     for (key in target) {
-        exportedValue = target[key];
+        if (Object.prototype.hasOwnProperty.call(target, key)) {
+            exportedValue = target[key];
 
-        if (typeof exportedValue === 'function') {
-            _aureliaMetadata.Origin.set(exportedValue, new _aureliaMetadata.Origin(name, key));
+            if (typeof exportedValue === 'function') {
+                _aureliaMetadata.Origin.set(exportedValue, new _aureliaMetadata.Origin(name, key));
+            }
         }
     }
 
