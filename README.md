@@ -1,6 +1,6 @@
 ## aurelia-loader-fusebox
 
-[demo here](https://github.com/arabsight/aurelia-skeleton-fusebox)
+[Demo here](https://github.com/arabsight/aurelia-skeleton-fusebox)
 
 ## Install:
 ```
@@ -18,14 +18,13 @@ export function configure(aurelia) {
 }
 ```
 
-## FuseBox config example
+## FuseBox simple config example
 ```js
 const { FuseBox, RawPlugin, HTMLPlugin, BabelPlugin } = require('fuse-box');
 
 let fuse = FuseBox.init({
     homeDir: './src',
-    outFile: './dist/bundle.js',
-    sourcemaps: true,
+    output: './dist/$name.js',
     plugins: [
         RawPlugin(['.css']),
         HTMLPlugin({ useDefault: true }),
@@ -33,16 +32,19 @@ let fuse = FuseBox.init({
     ]
 });
 
-fuse.devServer(`
-    > main.js
-    + **/*.{js,html,css}
-    + aurelia-bootstrapper
-    + aurelia-pal-browser
-    + aurelia-framework
-    + aurelia-logging-console
-    + aurelia-templating-binding
-    + aurelia-history-browser
-    + aurelia-templating-resources
-    + aurelia-templating-router
-`);
+fuse.bundle('bundle')
+    .instructions(`
+        > main.js
+        + **/*.{js,html,css}
+        + aurelia-bootstrapper
+        + aurelia-pal-browser
+        + aurelia-framework
+        + aurelia-logging-console
+        + aurelia-templating-binding
+        + aurelia-history-browser
+        + aurelia-templating-resources
+        + aurelia-templating-router
+    `);
+
+fuse.run();
 ```
