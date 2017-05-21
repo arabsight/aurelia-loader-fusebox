@@ -1,5 +1,5 @@
 const path = require('path');
-const { FuseBox, BabelPlugin, HTMLPlugin } = require('fsbx');
+const { FuseBox, BabelPlugin, HTMLPlugin } = require('fuse-box');
 
 process.env.FUSEBOX_DIST_ROOT = __dirname;
 process.env.PROJECT_NODE_MODULES = path.join(__dirname, 'node_modules');
