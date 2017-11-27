@@ -62,7 +62,6 @@ export class FuseBoxLoader extends Loader {
 
         this.loaderPlugins = Object.create(null);
         this.moduleRegistry = Object.create(null);
-        this.normalizedIds = Object.create(null);
 
         this.useTemplateLoader(new TextTemplateLoader());
         this.useTemplateRegistryEntryPlugin();
@@ -79,9 +78,9 @@ export class FuseBoxLoader extends Loader {
 
     getTemplateRegistryEntry(address) {
         const entry = this.getOrCreateTemplateRegistryEntry(address);
-        if (entry.templateIsLoaded) return entry;
+        if (entry.templateIsLoaded) { return entry; }
         return this.templateLoader.loadTemplate(this, entry).then((x) => entry);
-    };
+    }
 
     /**
      * Instructs the loader to use a specific plugin for loading templates
@@ -98,7 +97,7 @@ export class FuseBoxLoader extends Loader {
      * @param id The module id.
      * @param source The source to map the module to.
      */
-    map(id, source) {}
+    map(id, source) { }
 
     /**
      * Normalizes a module id.
@@ -125,14 +124,14 @@ export class FuseBoxLoader extends Loader {
      * @param id The module id to load.
      * @return A promise for the loaded module.
      */
-    _loadAndCache(id) {
+    loadAndCache(id) {
         return new Promise((resolve, reject) => {
             try {
-                let moduleId = this._normalizeId(id);
-                let _module = FuseBox.import(moduleId);
-                this.moduleRegistry[id] = _module;
+                let moduleId = this.getNormalizedModuleName(id);
+                let result = FuseBox.import(moduleId);
+                this.moduleRegistry[id] = result;
 
-                resolve(ensureOriginOnExports(_module, id));
+                resolve(ensureOriginOnExports(result, id));
             } catch (error) {
                 reject(error);
             }
@@ -145,48 +144,36 @@ export class FuseBoxLoader extends Loader {
      * @param parentId the module id of the package containing sub-resources
      * @returns the module id for the sub-resource
      */
-    _getResourceId(id, parentId) {
-        const resources = Object.keys(FuseBox.packages[parentId].f);
+    normalizeResourceName(id, parentId) {
+        const parentEntry = FuseBox.packages[parentId].s.entry;
         const resourceName = id.replace(parentId, '');
-        let entry = resources.find((r) => r.endsWith(resourceName + '.js'));
-        if (!entry) throw new Error(`Unable to find a module with ID: ${id}`);
-        return `${parentId}/${entry.replace(/\.js$/i, '')}`;
+        const entry = parentEntry.replace(/\/([^\/]+)\/?$/, resourceName);
+        return `${parentId}/${entry}`;
     }
-    // function _getResourceId(id, parentId) {
-    //     const parentEntry = FuseBox.packages[parentId].s.entry;
-    //     const resourceName = id.replace(parentId, '');
-    //     const entry = parentEntry.replace(/\/([^\/]+)\/?$/, resourceName);
-    //     return `${parentId}/${entry}`;
-    // }
-
 
     /**
      * Maps a requested module id to a format that FuseBox Understands
      * @param id the requested module id
      * @returns the normalized id
      */
-    _normalizeId(id) {
-        let existing = this.normalizedIds[id];
-        if (existing) return existing;
-
+    getNormalizedModuleName(id) {
         if (FuseBox.exists(id)) {
-            this.normalizedIds[id] = id;
             return id;
         }
 
         let fuseId = `${PACKAGE_NAME}/${id}`;
         if (FuseBox.exists(fuseId)) {
-            this.normalizedIds[id] = fuseId;
             return fuseId;
         }
 
         let parentId = Object.keys(FuseBox.packages)
             .find((name) => id.startsWith(`${name}/`));
         if (parentId) {
-            let resourceId = this._getResourceId(id, parentId);
+            let resourceId = this.normalizeResourceName(id, parentId);
             if (FuseBox.exists(resourceId)) {
-                this.normalizedIds[id] = resourceId;
                 return resourceId;
+            } else {
+                throw new Error(`Unable to find a resource with ID: ${id}`);
             }
         }
 
@@ -199,7 +186,7 @@ export class FuseBoxLoader extends Loader {
      * @param cache whether to cache the fetched content
      * @return A Promise for fetched content.
      */
-    _loadWithPlugin(address, cache) {
+    loadWithPlugin(address, cache) {
         return new Promise((resolve, reject) => {
             const [pluginName, id] = address.split('!');
             const plugin = this.loaderPlugins[pluginName];
@@ -224,10 +211,10 @@ export class FuseBoxLoader extends Loader {
         }
 
         if (id.indexOf('!') > -1) {
-            return this._loadWithPlugin(id, true);
+            return this.loadWithPlugin(id, true);
         }
 
-        return this._loadAndCache(id);
+        return this.loadAndCache(id);
     }
 
     /**
@@ -247,7 +234,7 @@ export class FuseBoxLoader extends Loader {
      * @return A Promise for a TemplateRegistryEntry containing the template.
      */
     loadTemplate(url) {
-        return this._loadWithPlugin(this.applyPluginToUrl(url, TEMPLATE_PLUGIN_NAME));
+        return this.loadWithPlugin(this.applyPluginToUrl(url, TEMPLATE_PLUGIN_NAME));
     }
 
     /**
@@ -256,7 +243,7 @@ export class FuseBoxLoader extends Loader {
      * @return A Promise for text content.
      */
     loadText(url) {
-        const id = this._normalizeId(url);
+        const id = this.getNormalizedModuleName(url);
 
         return Promise.resolve(FuseBox.import(id))
             .then((m) => (typeof m === 'string') ? m : m.default);

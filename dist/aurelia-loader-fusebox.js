@@ -75,7 +75,6 @@ var FuseBoxLoader = exports.FuseBoxLoader = function (_Loader) {
 
         _this.loaderPlugins = Object.create(null);
         _this.moduleRegistry = Object.create(null);
-        _this.normalizedIds = Object.create(null);
 
         _this.useTemplateLoader(new TextTemplateLoader());
         _this.useTemplateRegistryEntryPlugin();
@@ -91,7 +90,9 @@ var FuseBoxLoader = exports.FuseBoxLoader = function (_Loader) {
         key: 'getTemplateRegistryEntry',
         value: function getTemplateRegistryEntry(address) {
             var entry = this.getOrCreateTemplateRegistryEntry(address);
-            if (entry.templateIsLoaded) return entry;
+            if (entry.templateIsLoaded) {
+                return entry;
+            }
             return this.templateLoader.loadTemplate(this, entry).then(function (x) {
                 return entry;
             });
@@ -118,47 +119,39 @@ var FuseBoxLoader = exports.FuseBoxLoader = function (_Loader) {
             return Promise.resolve(moduleId);
         }
     }, {
-        key: '_loadAndCache',
-        value: function _loadAndCache(id) {
+        key: 'loadAndCache',
+        value: function loadAndCache(id) {
             var _this2 = this;
 
             return new Promise(function (resolve, reject) {
                 try {
-                    var moduleId = _this2._normalizeId(id);
-                    var _module = FuseBox.import(moduleId);
-                    _this2.moduleRegistry[id] = _module;
+                    var moduleId = _this2.getNormalizedModuleName(id);
+                    var result = FuseBox.import(moduleId);
+                    _this2.moduleRegistry[id] = result;
 
-                    resolve(ensureOriginOnExports(_module, id));
+                    resolve(ensureOriginOnExports(result, id));
                 } catch (error) {
                     reject(error);
                 }
             });
         }
     }, {
-        key: '_getResourceId',
-        value: function _getResourceId(id, parentId) {
-            var resources = Object.keys(FuseBox.packages[parentId].f);
+        key: 'normalizeResourceName',
+        value: function normalizeResourceName(id, parentId) {
+            var parentEntry = FuseBox.packages[parentId].s.entry;
             var resourceName = id.replace(parentId, '');
-            var entry = resources.find(function (r) {
-                return r.endsWith(resourceName + '.js');
-            });
-            if (!entry) throw new Error('Unable to find a module with ID: ' + id);
-            return parentId + '/' + entry.replace(/\.js$/i, '');
+            var entry = parentEntry.replace(/\/([^\/]+)\/?$/, resourceName);
+            return parentId + '/' + entry;
         }
     }, {
-        key: '_normalizeId',
-        value: function _normalizeId(id) {
-            var existing = this.normalizedIds[id];
-            if (existing) return existing;
-
+        key: 'getNormalizedModuleName',
+        value: function getNormalizedModuleName(id) {
             if (FuseBox.exists(id)) {
-                this.normalizedIds[id] = id;
                 return id;
             }
 
             var fuseId = PACKAGE_NAME + '/' + id;
             if (FuseBox.exists(fuseId)) {
-                this.normalizedIds[id] = fuseId;
                 return fuseId;
             }
 
@@ -166,18 +159,19 @@ var FuseBoxLoader = exports.FuseBoxLoader = function (_Loader) {
                 return id.startsWith(name + '/');
             });
             if (parentId) {
-                var resourceId = this._getResourceId(id, parentId);
+                var resourceId = this.normalizeResourceName(id, parentId);
                 if (FuseBox.exists(resourceId)) {
-                    this.normalizedIds[id] = resourceId;
                     return resourceId;
+                } else {
+                    throw new Error('Unable to find a resource with ID: ' + id);
                 }
             }
 
             throw new Error('Unable to find a module with ID: ' + id);
         }
     }, {
-        key: '_loadWithPlugin',
-        value: function _loadWithPlugin(address, cache) {
+        key: 'loadWithPlugin',
+        value: function loadWithPlugin(address, cache) {
             var _this3 = this;
 
             return new Promise(function (resolve, reject) {
@@ -204,10 +198,10 @@ var FuseBoxLoader = exports.FuseBoxLoader = function (_Loader) {
             }
 
             if (id.indexOf('!') > -1) {
-                return this._loadWithPlugin(id, true);
+                return this.loadWithPlugin(id, true);
             }
 
-            return this._loadAndCache(id);
+            return this.loadAndCache(id);
         }
     }, {
         key: 'loadAllModules',
@@ -221,12 +215,12 @@ var FuseBoxLoader = exports.FuseBoxLoader = function (_Loader) {
     }, {
         key: 'loadTemplate',
         value: function loadTemplate(url) {
-            return this._loadWithPlugin(this.applyPluginToUrl(url, TEMPLATE_PLUGIN_NAME));
+            return this.loadWithPlugin(this.applyPluginToUrl(url, TEMPLATE_PLUGIN_NAME));
         }
     }, {
         key: 'loadText',
         value: function loadText(url) {
-            var id = this._normalizeId(url);
+            var id = this.getNormalizedModuleName(url);
 
             return Promise.resolve(FuseBox.import(id)).then(function (m) {
                 return typeof m === 'string' ? m : m.default;
